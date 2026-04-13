@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNS運用チーム オフィスモニター</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DotGothic16', monospace;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  overflow: hidden;
+  height: 100vh;
+  image-rendering: pixelated;
+}
+
+/* ===== Header ===== */
+.header {
+  background: linear-gradient(90deg, #16213e, #0f3460);
+  padding: 8px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid #e94560;
+  z-index: 100;
+  position: relative;
+}
+.header h1 {
+  font-size: 16px;
+  color: #e94560;
+  letter-spacing: 2px;
+}
+.header .clock {
+  font-size: 14px;
+  color: #53d8fb;
+}
+.header .status-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: #00ff88;
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: blink 2s infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ===== Main Layout ===== */
+.main {
+  display: flex;
+  height: calc(100vh - 43px);
+}
+
+/* ===== Office Canvas ===== */
+.office-area {
+  flex: 1;
+  position: relative;
+  background: #2a2a4a;
+  overflow: hidden;
+}
+.office-room {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 820px; height: 520px;
+  background: #3d3d5c;
+  border: 4px solid #5a5a8a;
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(83,216,251,0.1);
+}
+
+/* Floor pattern */
+.office-room::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.02) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.02) 75%);
+  background-size: 40px 40px;
+  background-position: 0 0, 0 20px, 20px -20px, -20px 0;
+  border-radius: 4px;
+}
+
+/* Wall */
+.wall {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 60px;
+  background: linear-gradient(180deg, #4a4a7a, #3d3d5c);
+  border-bottom: 3px solid #5a5a8a;
+  border-radius: 4px 4px 0 0;
+}
+.window {
+  position: absolute;
+  top: 8px;
+  width: 80px; height: 40px;
+  background: linear-gradient(180deg, #87ceeb, #5ba3d9);
+  border: 3px solid #8a8ab0;
+  border-radius: 2px;
+}
+.window::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  width: 3px; height: 100%;
+  background: #8a8ab0;
+  transform: translateX(-50%);
+}
+.window:nth-child(1) { left: 100px; }
+.window:nth-child(2) { left: 300px; }
+.window:nth-child(3) { left: 500px; }
+.window:nth-child(4) { left: 700px; }
+
+/* ===== Furniture ===== */
+.desk {
+  position: absolute;
+  width: 140px; height: 70px;
+  background: linear-gradient(135deg, #8B6914, #a07828);
+  border: 3px solid #6b4f10;
+  border-radius: 4px;
+  box-shadow: 0 4px 0 #5a4010;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.desk:hover { transform: scale(1.03); }
+.desk::after {
+  content: '';
+  position: absolute;
+  top: 5px; left: 10px; right: 10px;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+/* Monitor on desk */
+.monitor {
+  position: absolute;
+  top: -28px; left: 50%;
+  transform: translateX(-50%);
+  width: 44px; height: 32px;
+  background: #222;
+  border: 3px solid #444;
+  border-radius: 3px;
+}
+.monitor-screen {
+  position: absolute;
+  inset: 3px;
+  border-radius: 1px;
+  animation: screenGlow 3s infinite;
+}
+.monitor-stand {
+  position: absolute;
+  bottom: -8px; left: 50%;
+  transform: translateX(-50%);
+  width: 8px; height: 8px;
+  background: #444;
+}
+@keyframes screenGlow {
+  0%, 100% { background: #1a3a5c; }
+  50% { background: #2a5a8c; }
+}
+.monitor-screen.off {
+  background: #111 !important;
+  animation: none;
+}
+
+/* ===== Characters ===== */
+.character {
+  position: absolute;
+  cursor: pointer;
+  transition: all 0.3s;
+  z-index: 10;
+}
+.character:hover { transform: scale(1.1); filter: brightness(1.2); }
+
+.avatar {
+  width: 48px; height: 64px;
+  position: relative;
+  image-rendering: pixelated;
+}
+
+/* Pixel art character body */
+.char-head {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.3);
+}
+.char-body {
+  position: absolute;
+  top: 22px; left: 50%;
+  transform: translateX(-50%);
+  width: 28px; height: 24px;
+  border-radius: 4px 4px 0 0;
+  border: 2px solid rgba(0,0,0,0.2);
+}
+.char-legs {
+  position: absolute;
+  top: 44px; left: 50%;
+  transform: translateX(-50%);
+  width: 24px; height: 14px;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+.char-leg {
+  width: 8px; height: 14px;
+  background: #3a3a5a;
+  border-radius: 0 0 3px 3px;
+}
+.char-eyes {
+  position: absolute;
+  top: 10px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+.char-eye {
+  width: 4px; height: 4px;
+  background: #222;
+  border-radius: 50%;
+}
+
+/* Name label */
+.char-name {
+  position: absolute;
+  bottom: -20px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  white-space: nowrap;
+  background: rgba(0,0,0,0.7);
+  padding: 2px 8px;
+  border-radius: 8px;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+/* Status bubble */
+.status-bubble {
+  position: absolute;
+  top: -32px; left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: #333;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  z-index: 20;
+}
+.status-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -5px; left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid white;
+}
+
+/* ===== Animations ===== */
+/* Working */
+.working .avatar { animation: typing 0.5s infinite; }
+@keyframes typing {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* Sleeping */
+.sleeping .avatar { animation: sleepBob 2s infinite; }
+.sleeping .char-eyes .char-eye {
+  height: 2px;
+  border-radius: 0;
+  background: #222;
+}
+@keyframes sleepBob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(2px) rotate(5deg); }
+}
+.zzz {
+  position: absolute;
+  top: -20px; right: -10px;
+  font-size: 16px;
+  animation: zzz 1.5s infinite;
+}
+@keyframes zzz {
+  0% { opacity: 1; transform: translateY(0) scale(0.8); }
+  100% { opacity: 0; transform: translateY(-20px) scale(1.2); }
+}
+
+/* Walking */
+.walking .avatar { animation: walk 0.6s infinite; }
+@keyframes walk {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px) translateY(-2px); }
+  75% { transform: translateX(3px) translateY(-2px); }
+}
+
+/* Coffee */
+.coffee-break .avatar { animation: sip 2s infinite; }
+@keyframes sip {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-4px); }
+}
+
+/* ===== Bookshelf ===== */
+.bookshelf {
+  position: absolute;
+  bottom: 30px; right: 30px;
+  width: 120px; height: 140px;
+  background: linear-gradient(135deg, #8B4513, #a0522d);
+  border: 4px solid #5c2e00;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 8px 6px;
+  box-shadow: 0 4px 0 #4a2000;
+  transition: transform 0.1s;
+}
+.bookshelf:hover { transform: scale(1.05); }
+.shelf-row {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  align-items: flex-end;
+  height: 28px;
+  border-bottom: 3px solid #5c2e00;
+  padding-bottom: 2px;
+}
+.book {
+  width: 10px;
+  border-radius: 1px;
+  box-shadow: 1px 0 0 rgba(0,0,0,0.2);
+}
+.shelf-label {
+  position: absolute;
+  bottom: -20px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  background: rgba(0,0,0,0.7);
+  padding: 2px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* ===== Plant ===== */
+.plant {
+  position: absolute;
+  font-size: 32px;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+}
+
+/* ===== Whiteboard ===== */
+.whiteboard {
+  position: absolute;
+  top: 70px; left: 50%;
+  transform: translateX(-50%);
+  width: 200px; height: 100px;
+  background: #f0f0f0;
+  border: 4px solid #aaa;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 9px;
+  color: #333;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.whiteboard:hover { transform: translateX(-50%) scale(1.05); }
+.wb-title {
+  font-size: 10px;
+  font-weight: bold;
+  color: #e94560;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed #ccc;
+  padding-bottom: 3px;
+}
+
+/* ===== Side Panel ===== */
+.side-panel {
+  width: 340px;
+  background: #16213e;
+  border-left: 3px solid #0f3460;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-tabs {
+  display: flex;
+  background: #0f3460;
+}
+.panel-tab {
+  flex: 1;
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  color: #8a8ab0;
+}
+.panel-tab:hover { color: #fff; }
+.panel-tab.active {
+  color: #53d8fb;
+  border-bottom-color: #53d8fb;
+}
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+.panel-content::-webkit-scrollbar { width: 6px; }
+.panel-content::-webkit-scrollbar-track { background: #16213e; }
+.panel-content::-webkit-scrollbar-thumb { background: #3d3d5c; border-radius: 3px; }
+
+/* Panel sections */
+.panel-section { display: none; }
+.panel-section.active { display: block; }
+
+/* Member card */
+.member-card {
+  background: #1a2744;
+  border: 2px solid #2a3a5c;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.member-card:hover {
+  border-color: #53d8fb;
+  background: #1e2f50;
+}
+.member-card .mc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.mc-name {
+  font-size: 14px;
+  font-weight: bold;
+}
+.mc-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+.mc-status.working { background: #00ff88; color: #111; }
+.mc-status.idle { background: #ffa500; color: #111; }
+.mc-status.sleeping { background: #ff4444; color: #fff; }
+.mc-status.coffee { background: #d4a574; color: #111; }
+
+.mc-tasks {
+  margin-top: 8px;
+}
+.mc-task {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 11px;
+  border-bottom: 1px solid #2a3a5c;
+}
+.mc-task:last-child { border-bottom: none; }
+.task-check {
+  font-size: 13px;
+}
+
+/* Report */
+.report-entry {
+  background: #1a2744;
+  border: 2px solid #2a3a5c;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.report-entry .re-date {
+  font-size: 13px;
+  font-weight: bold;
+  color: #53d8fb;
+  margin-bottom: 6px;
+}
+.report-entry .re-person {
+  color: #e94560;
+  font-weight: bold;
+}
+
+/* Activity log */
+.log-entry {
+  padding: 6px 0;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  gap: 8px;
+}
+.log-time {
+  color: #53d8fb;
+  white-space: nowrap;
+  min-width: 45px;
+}
+.log-msg { color: #ccc; }
+
+/* Progress bars */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #2a3a5c;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+.progress-fill.green { background: linear-gradient(90deg, #00ff88, #00cc66); }
+.progress-fill.yellow { background: linear-gradient(90deg, #ffa500, #ff8800); }
+.progress-fill.red { background: linear-gradient(90deg, #ff4444, #cc2222); }
+
+/* ===== Summary Stats ===== */
+.stats-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #0f3460;
+  border-bottom: 1px solid #2a3a5c;
+}
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 6px;
+  background: #16213e;
+  border-radius: 6px;
+  font-size: 10px;
+}
+.stat-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #53d8fb;
+}
+.stat-label {
+  color: #8a8ab0;
+  margin-top: 2px;
+}
+
+/* ===== Modal ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #1a2744;
+  border: 3px solid #53d8fb;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+.modal h2 {
+  font-size: 16px;
+  color: #53d8fb;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #2a3a5c;
+}
+.modal-close {
+  position: absolute;
+  top: 12px; right: 16px;
+  font-size: 20px;
+  cursor: pointer;
+  color: #8a8ab0;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+.modal-close:hover { color: #e94560; }
+
+/* Weekly summary in modal */
+.weekly-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 12px;
+}
+.day-cell {
+  text-align: center;
+  padding: 6px 2px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.day-cell.done { background: rgba(0,255,136,0.2); border: 1px solid #00ff88; }
+.day-cell.missed { background: rgba(255,68,68,0.2); border: 1px solid #ff4444; }
+.day-cell.pending { background: rgba(255,165,0,0.2); border: 1px solid #ffa500; }
+.day-cell.future { background: rgba(255,255,255,0.05); border: 1px solid #3d3d5c; }
+
+/* Notification toast */
+.toast {
+  position: fixed;
+  bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #16213e;
+  border: 2px solid #53d8fb;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 2000;
+  transition: transform 0.4s ease;
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .main { flex-direction: column; }
+  .side-panel { width: 100%; height: 50vh; }
+  .office-room { width: 600px; height: 400px; transform: translate(-50%, -50%) scale(0.7); }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1><span class="status-dot"></span>SNS運用チーム オフィスモニター</h1>
+  <div class="clock" id="clock">2026/04/13 (日) 00:00:00</div>
+</div>
+
+<div class="main">
+  <!-- Office Area -->
+  <div class="office-area">
+    <div class="office-room" id="officeRoom">
+      <!-- Wall & Windows -->
+      <div class="wall">
+        <div class="window"></div>
+        <div class="window"></div>
+        <div class="window"></div>
+      </div>
+
+      <!-- Whiteboard -->
+      <div class="whiteboard" id="whiteboard" onclick="showWhiteboardModal()">
+        <div class="wb-title">今週のノルマ (4/7〜4/13)</div>
+        <div id="wbContent"></div>
+      </div>
+
+      <!-- Desks & Characters will be injected by JS -->
+
+      <!-- Bookshelf -->
+      <div class="bookshelf" id="bookshelf" onclick="switchTab('reports')">
+        <div class="shelf-row">
+          <div class="book" style="height:22px;background:#e94560;"></div>
+          <div class="book" style="height:18px;background:#53d8fb;"></div>
+          <div class="book" style="height:24px;background:#00ff88;"></div>
+          <div class="book" style="height:16px;background:#ffa500;"></div>
+          <div class="book" style="height:20px;background:#d4a574;"></div>
+          <div class="book" style="height:22px;background:#e94560;"></div>
+        </div>
+        <div class="shelf-row">
+          <div class="book" style="height:20px;background:#53d8fb;"></div>
+          <div class="book" style="height:24px;background:#ffa500;"></div>
+          <div class="book" style="height:18px;background:#00ff88;"></div>
+          <div class="book" style="height:22px;background:#d4a574;"></div>
+          <div class="book" style="height:16px;background:#e94560;"></div>
+        </div>
+        <div class="shelf-row">
+          <div class="book" style="height:24px;background:#00ff88;"></div>
+          <div class="book" style="height:20px;background:#e94560;"></div>
+          <div class="book" style="height:18px;background:#53d8fb;"></div>
+          <div class="book" style="height:22px;background:#ffa500;"></div>
+          <div class="book" style="height:20px;background:#d4a574;"></div>
+          <div class="book" style="height:16px;background:#53d8fb;"></div>
+        </div>
+        <div class="shelf-label">報告書棚</div>
+      </div>
+
+      <!-- Plants -->
+      <div class="plant" style="bottom:20px;left:20px;">🪴</div>
+      <div class="plant" style="bottom:20px;left:680px;">🪴</div>
+      <div class="plant" style="top:65px;left:20px;">🪴</div>
+    </div>
+  </div>
+
+  <!-- Side Panel -->
+  <div class="side-panel">
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value" id="statWorking">0</div>
+        <div class="stat-label">作業中</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="statTasks">0</div>
+        <div class="stat-label">完了タスク</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="statPending">0</div>
+        <div class="stat-label">残タスク</div>
+      </div>
+    </div>
+    <div class="panel-tabs">
+      <div class="panel-tab active" data-tab="members" onclick="switchTab('members')">メンバー</div>
+      <div class="panel-tab" data-tab="reports" onclick="switchTab('reports')">報告書</div>
+      <div class="panel-tab" data-tab="log" onclick="switchTab('log')">ログ</div>
+    </div>
+    <div class="panel-content">
+      <div class="panel-section active" id="sec-members"></div>
+      <div class="panel-section" id="sec-reports"></div>
+      <div class="panel-section" id="sec-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('show')">&times;</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== DATA =====
+const MEMBERS = [
+  {
+    id: 'mikami',
+    name: '三上',
+    role: 'ニュース投稿担当',
+    color: '#53d8fb',
+    bodyColor: '#2a6090',
+    deskPos: { x: 80, y: 200 },
+    charOffset: { x: 48, y: -60 },
+    tasks: [
+      { name: 'ニュース投稿①', type: 'weekly', done: true, detail: 'ガソリン補助金延長について投稿完了' },
+      { name: 'ニュース投稿②', type: 'weekly', done: false, detail: '未着手' },
+      { name: 'コメント返信', type: 'daily', done: true, detail: '3件返信済み' },
+      { name: 'リアクション巡回', type: 'daily', done: true, detail: '5件いいね' },
+      { name: '完了報告', type: 'daily', done: true, detail: '#投稿の完了報告 に投稿済み' }
+    ]
+  },
+  {
+    id: 'niiyama',
+    name: '新山',
+    role: '動画作成担当',
+    color: '#00ff88',
+    bodyColor: '#1a7a4a',
+    deskPos: { x: 340, y: 200 },
+    charOffset: { x: 48, y: -60 },
+    tasks: [
+      { name: '動画作成', type: 'weekly', done: false, detail: '素材待ち — Slackで依頼済み' },
+      { name: 'コメント返信', type: 'daily', done: false, detail: '未確認' },
+      { name: 'リアクション巡回', type: 'daily', done: false, detail: '未確認' },
+      { name: '完了報告', type: 'daily', done: false, detail: '未提出' }
+    ]
+  },
+  {
+    id: 'nakatani',
+    name: '中谷',
+    role: 'コメント/リアクション当番',
+    color: '#e94560',
+    bodyColor: '#8a2040',
+    deskPos: { x: 600, y: 200 },
+    charOffset: { x: 48, y: -60 },
+    tasks: [
+      { name: 'コメント返信', type: 'daily', done: true, detail: '2件返信済み' },
+      { name: 'リアクション巡回', type: 'daily', done: true, detail: '4件いいね' },
+      { name: '活動報告投稿', type: 'weekly', done: true, detail: '月曜素材確認 → 投稿完了' },
+      { name: '完了報告', type: 'daily', done: true, detail: '#投稿の完了報告 に投稿済み' },
+      { name: '日常系コンテンツ', type: 'weekly', done: false, detail: 'ネタ選定中' }
+    ]
+  }
+];
+
+// Status simulation
+const STATUS_TYPES = ['working', 'sleeping', 'coffee-break', 'walking'];
+const STATUS_LABELS = {
+  'working': { text: '作業中', class: 'working', bubble: '' },
+  'sleeping': { text: '居眠り中', class: 'sleeping', bubble: '' },
+  'coffee-break': { text: '休憩中', class: 'coffee', bubble: '☕ コーヒー休憩' },
+  'walking': { text: '離席中', class: 'idle', bubble: '🚶 離席中' }
+};
+
+const WORKING_BUBBLES = [
+  '📝 投稿文を作成中...',
+  '🔍 ニュース確認中...',
+  '💬 コメント返信中...',
+  '❤️ リアクション巡回中...',
+  '🎬 動画を編集中...',
+  '📊 レポート作成中...',
+  '📱 Instagram確認中...',
+  '🐦 X投稿を確認中...'
+];
+
+// Reports data
+const REPORTS = [
+  { date: '4/13(日)', person: '中谷', content: 'コメント✅(2件返信) / リアクション✅(4件いいね) / 特記: 活動報告投稿完了' },
+  { date: '4/12(土)', person: '三上', content: 'コメント✅(3件返信) / リアクション✅(5件いいね) / 特記: ニュース投稿①完了' },
+  { date: '4/11(金)', person: '新山', content: 'コメント✅(0件) / リアクション✅(2件いいね) / 特記: 動画素材をSlackで依頼' },
+  { date: '4/10(木)', person: '中谷', content: 'コメント✅(4件返信) / リアクション✅(6件いいね) / 特記:なし' },
+  { date: '4/9(水)', person: '三上', content: 'コメント✅(1件返信) / リアクション✅(3件いいね) / 特記: ニュース候補📌2件' },
+  { date: '4/8(火)', person: '新山', content: 'コメント✅(0件) / リアクション✅(0件) / 特記: 新着なし' },
+  { date: '4/7(月)', person: '中谷', content: 'コメント✅(3件返信) / リアクション✅(5件いいね) / 特記:なし' },
+];
+
+// Activity log
+const LOG = [];
+
+function addLog(msg) {
+  const now = new Date();
+  const t = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  LOG.unshift({ time: t, msg });
+  if (LOG.length > 50) LOG.pop();
+  renderLog();
+}
+
+// ===== STATE =====
+let memberStates = {};
+
+function initStates() {
+  const hour = new Date().getHours();
+  MEMBERS.forEach(m => {
+    // Weighted random status based on task completion
+    const doneRate = m.tasks.filter(t => t.done).length / m.tasks.length;
+    let status;
+    if (doneRate >= 0.8) {
+      // high performer — mostly working, sometimes coffee
+      status = Math.random() < 0.7 ? 'working' : 'coffee-break';
+    } else if (doneRate >= 0.5) {
+      // medium — working or idle
+      status = Math.random() < 0.5 ? 'working' : (Math.random() < 0.5 ? 'coffee-break' : 'walking');
+    } else {
+      // low — sometimes sleeping
+      status = Math.random() < 0.3 ? 'working' : (Math.random() < 0.4 ? 'sleeping' : 'coffee-break');
+    }
+    // Night hours: more likely sleeping
+    if (hour < 7 || hour > 23) status = 'sleeping';
+
+    memberStates[m.id] = {
+      status,
+      bubble: status === 'working' ? WORKING_BUBBLES[Math.floor(Math.random() * WORKING_BUBBLES.length)] : STATUS_LABELS[status].bubble
+    };
+  });
+}
+
+// ===== RENDER =====
+function renderOffice() {
+  const room = document.getElementById('officeRoom');
+  // Remove old desks & chars
+  room.querySelectorAll('.desk, .character').forEach(el => el.remove());
+
+  MEMBERS.forEach(m => {
+    const st = memberStates[m.id];
+    const stInfo = STATUS_LABELS[st.status];
+
+    // Desk
+    const desk = document.createElement('div');
+    desk.className = 'desk';
+    desk.style.left = m.deskPos.x + 'px';
+    desk.style.top = m.deskPos.y + 'px';
+    desk.onclick = () => showMemberModal(m.id);
+
+    // Monitor
+    const mon = document.createElement('div');
+    mon.className = 'monitor';
+    const scr = document.createElement('div');
+    scr.className = 'monitor-screen' + (st.status !== 'working' ? ' off' : '');
+    scr.style.background = st.status === 'working' ? '' : '';
+    mon.appendChild(scr);
+    const stand = document.createElement('div');
+    stand.className = 'monitor-stand';
+    mon.appendChild(stand);
+    desk.appendChild(mon);
+
+    room.appendChild(desk);
+
+    // Character
+    const charEl = document.createElement('div');
+    charEl.className = `character ${st.status === 'working' ? 'working' : ''} ${st.status === 'sleeping' ? 'sleeping' : ''} ${st.status === 'coffee-break' ? 'coffee-break' : ''} ${st.status === 'walking' ? 'walking' : ''}`;
+    charEl.style.left = (m.deskPos.x + m.charOffset.x) + 'px';
+    charEl.style.top = (m.deskPos.y + m.charOffset.y) + 'px';
+    charEl.onclick = () => showMemberModal(m.id);
+
+    // Status bubble
+    if (st.bubble) {
+      const bub = document.createElement('div');
+      bub.className = 'status-bubble';
+      bub.textContent = st.bubble;
+      charEl.appendChild(bub);
+    }
+
+    // Avatar
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+
+    const head = document.createElement('div');
+    head.className = 'char-head';
+    head.style.background = m.color;
+    avatar.appendChild(head);
+
+    const eyes = document.createElement('div');
+    eyes.className = 'char-eyes';
+    eyes.innerHTML = '<div class="char-eye"></div><div class="char-eye"></div>';
+    head.appendChild(eyes);
+
+    const body = document.createElement('div');
+    body.className = 'char-body';
+    body.style.background = m.bodyColor;
+    avatar.appendChild(body);
+
+    const legs = document.createElement('div');
+    legs.className = 'char-legs';
+    legs.innerHTML = '<div class="char-leg"></div><div class="char-leg"></div>';
+    avatar.appendChild(legs);
+
+    charEl.appendChild(avatar);
+
+    // ZZZ for sleeping
+    if (st.status === 'sleeping') {
+      const zzz = document.createElement('div');
+      zzz.className = 'zzz';
+      zzz.textContent = '💤';
+      charEl.appendChild(zzz);
+    }
+
+    // Coffee cup for coffee-break
+    if (st.status === 'coffee-break') {
+      const cup = document.createElement('div');
+      cup.style.cssText = 'position:absolute;bottom:10px;right:-12px;font-size:16px;';
+      cup.textContent = '☕';
+      charEl.appendChild(cup);
+    }
+
+    // Name
+    const name = document.createElement('div');
+    name.className = 'char-name';
+    name.textContent = m.name;
+    name.style.borderColor = m.color;
+    charEl.appendChild(name);
+
+    room.appendChild(charEl);
+  });
+}
+
+function renderMembers() {
+  const sec = document.getElementById('sec-members');
+  sec.innerHTML = '';
+  MEMBERS.forEach(m => {
+    const st = memberStates[m.id];
+    const stInfo = STATUS_LABELS[st.status];
+    const doneCount = m.tasks.filter(t => t.done).length;
+    const totalCount = m.tasks.length;
+    const pct = Math.round((doneCount / totalCount) * 100);
+
+    const card = document.createElement('div');
+    card.className = 'member-card';
+    card.onclick = () => showMemberModal(m.id);
+
+    card.innerHTML = `
+      <div class="mc-header">
+        <span class="mc-name" style="color:${m.color}">${m.name} <span style="font-size:11px;color:#8a8ab0;">${m.role}</span></span>
+        <span class="mc-status ${stInfo.class}">${stInfo.text}</span>
+      </div>
+      <div style="font-size:11px;color:#8a8ab0;margin-bottom:6px;">タスク進捗: ${doneCount}/${totalCount} (${pct}%)</div>
+      <div class="progress-bar">
+        <div class="progress-fill ${pct >= 75 ? 'green' : pct >= 50 ? 'yellow' : 'red'}" style="width:${pct}%"></div>
+      </div>
+      <div class="mc-tasks">
+        ${m.tasks.map(t => `
+          <div class="mc-task">
+            <span>${t.done ? '✅' : '⬜'} ${t.name}</span>
+            <span style="color:${t.done ? '#00ff88' : '#ff8844'};font-size:10px;">${t.done ? '完了' : '未完了'}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    sec.appendChild(card);
+  });
+}
+
+function renderReports() {
+  const sec = document.getElementById('sec-reports');
+  sec.innerHTML = '<div style="font-size:13px;color:#53d8fb;margin-bottom:10px;font-weight:bold;">📋 完了報告一覧</div>';
+  REPORTS.forEach(r => {
+    const entry = document.createElement('div');
+    entry.className = 'report-entry';
+    entry.innerHTML = `
+      <div class="re-date">${r.date}</div>
+      <span class="re-person">${r.person}:</span> ${r.content}
+    `;
+    sec.appendChild(entry);
+  });
+}
+
+function renderLog() {
+  const sec = document.getElementById('sec-log');
+  sec.innerHTML = '<div style="font-size:13px;color:#53d8fb;margin-bottom:10px;font-weight:bold;">📊 アクティビティログ</div>';
+  if (LOG.length === 0) {
+    sec.innerHTML += '<div style="color:#8a8ab0;font-size:12px;padding:20px 0;text-align:center;">ログを収集中...</div>';
+    return;
+  }
+  LOG.forEach(l => {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-time">${l.time}</span><span class="log-msg">${l.msg}</span>`;
+    sec.appendChild(entry);
+  });
+}
+
+function renderWhiteboard() {
+  const wb = document.getElementById('wbContent');
+  const weeklyTasks = [
+    { name: 'ニュース投稿 ×2', done: 1, total: 2 },
+    { name: '動画作成 ×1', done: 0, total: 1 },
+    { name: '活動報告 ×1', done: 1, total: 1 },
+    { name: '日常系 ×1', done: 0, total: 1 },
+  ];
+  wb.innerHTML = weeklyTasks.map(t =>
+    `<div style="display:flex;justify-content:space-between;">
+      <span>${t.done >= t.total ? '✅' : '⬜'} ${t.name}</span>
+      <span style="color:${t.done >= t.total ? '#00aa66' : '#cc6600'}">${t.done}/${t.total}</span>
+    </div>`
+  ).join('');
+}
+
+function renderStats() {
+  const working = MEMBERS.filter(m => memberStates[m.id].status === 'working').length;
+  const totalDone = MEMBERS.reduce((sum, m) => sum + m.tasks.filter(t => t.done).length, 0);
+  const totalPending = MEMBERS.reduce((sum, m) => sum + m.tasks.filter(t => !t.done).length, 0);
+  document.getElementById('statWorking').textContent = working;
+  document.getElementById('statTasks').textContent = totalDone;
+  document.getElementById('statPending').textContent = totalPending;
+}
+
+// ===== INTERACTIONS =====
+function switchTab(tab) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.panel-tab[data-tab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`sec-${tab}`).classList.add('active');
+}
+
+function showMemberModal(id) {
+  const m = MEMBERS.find(x => x.id === id);
+  const st = memberStates[m.id];
+  const stInfo = STATUS_LABELS[st.status];
+  const doneCount = m.tasks.filter(t => t.done).length;
+  const totalCount = m.tasks.length;
+  const pct = Math.round((doneCount / totalCount) * 100);
+
+  const days = ['月','火','水','木','金','土','日'];
+  // Simulated weekly attendance
+  const weekData = [
+    { day: '4/7(月)', status: 'done' },
+    { day: '4/8(火)', status: 'done' },
+    { day: '4/9(水)', status: m.id === 'niiyama' ? 'missed' : 'done' },
+    { day: '4/10(木)', status: 'done' },
+    { day: '4/11(金)', status: m.id === 'niiyama' ? 'missed' : 'done' },
+    { day: '4/12(土)', status: m.id === 'nakatani' ? 'pending' : 'done' },
+    { day: '4/13(日)', status: 'pending' },
+  ];
+
+  document.getElementById('modalContent').innerHTML = `
+    <h2 style="color:${m.color}">${m.name} — ${m.role}</h2>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <span class="mc-status ${stInfo.class}" style="font-size:13px;padding:4px 12px;">${stInfo.text}</span>
+      <span style="font-size:12px;color:#8a8ab0;">${st.bubble || ''}</span>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:#8a8ab0;margin-bottom:4px;">今週のタスク進捗: ${doneCount}/${totalCount} (${pct}%)</div>
+      <div class="progress-bar" style="height:12px;">
+        <div class="progress-fill ${pct >= 75 ? 'green' : pct >= 50 ? 'yellow' : 'red'}" style="width:${pct}%"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      ${m.tasks.map(t => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;margin-bottom:4px;background:#0f1e38;border-radius:6px;">
+          <div>
+            <span style="font-size:13px;">${t.done ? '✅' : '⬜'} ${t.name}</span>
+            <span style="font-size:10px;color:#8a8ab0;margin-left:8px;">[${t.type === 'daily' ? '毎日' : '週次'}]</span>
+          </div>
+          <span style="font-size:11px;color:${t.done ? '#00ff88' : '#ff8844'};">${t.detail}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div style="font-size:13px;color:#53d8fb;margin-bottom:8px;">📅 今週の対応状況</div>
+    <div class="weekly-grid">
+      ${weekData.map(d => `
+        <div class="day-cell ${d.status}">
+          <div style="font-size:9px;">${d.day.split('(')[1]?.replace(')','') || ''}</div>
+          <div style="font-size:14px;margin-top:2px;">${d.status === 'done' ? '✅' : d.status === 'missed' ? '❌' : '⏳'}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function showWhiteboardModal() {
+  const weeklyTasks = [
+    { name: 'ニュース投稿', target: 2, done: 1, person: '三上' },
+    { name: '動画作成', target: 1, done: 0, person: '新山' },
+    { name: '活動報告投稿', target: 1, done: 1, person: '中谷' },
+    { name: '日常系コンテンツ', target: 1, done: 0, person: '持ち回り' },
+  ];
+
+  document.getElementById('modalContent').innerHTML = `
+    <h2>📋 今週のノルマ達成状況 (4/7〜4/13)</h2>
+    ${weeklyTasks.map(t => `
+      <div style="padding:12px;margin-bottom:8px;background:#0f1e38;border-radius:8px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:13px;">${t.done >= t.target ? '✅' : '⬜'} ${t.name}</span>
+          <span style="font-size:12px;color:#8a8ab0;">担当: ${t.person}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="progress-bar" style="flex:1;">
+            <div class="progress-fill ${t.done >= t.target ? 'green' : 'yellow'}" style="width:${(t.done/t.target)*100}%"></div>
+          </div>
+          <span style="font-size:12px;color:${t.done >= t.target ? '#00ff88' : '#ffa500'};">${t.done}/${t.target}</span>
+        </div>
+      </div>
+    `).join('')}
+    <div style="margin-top:16px;padding:12px;background:rgba(233,69,96,0.1);border:1px solid #e94560;border-radius:8px;">
+      <div style="font-size:12px;color:#e94560;font-weight:bold;">⚠️ 未達アラート</div>
+      <div style="font-size:11px;margin-top:6px;color:#ccc;">
+        ・ニュース投稿 あと1本（三上）<br>
+        ・動画作成 未着手（新山 — 素材待ち）<br>
+        ・日常系コンテンツ 未着手（ネタ選定中）
+      </div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ===== CLOCK =====
+function updateClock() {
+  const now = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  const d = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} (${days[now.getDay()]}) ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  document.getElementById('clock').textContent = d;
+}
+
+// ===== STATUS SIMULATION =====
+function simulateActivity() {
+  const m = MEMBERS[Math.floor(Math.random() * MEMBERS.length)];
+  const st = memberStates[m.id];
+  const doneRate = m.tasks.filter(t => t.done).length / m.tasks.length;
+
+  // Transition probabilities
+  const r = Math.random();
+  if (st.status === 'working') {
+    if (r < 0.1) {
+      st.status = 'coffee-break';
+      st.bubble = '☕ コーヒー休憩';
+      addLog(`${m.name} がコーヒー休憩に入りました`);
+    } else if (r < 0.15 && doneRate < 0.5) {
+      st.status = 'sleeping';
+      st.bubble = '';
+      addLog(`⚠️ ${m.name} が居眠りしています...`);
+      showToast(`⚠️ ${m.name} が居眠りしています！`);
+    } else {
+      st.bubble = WORKING_BUBBLES[Math.floor(Math.random() * WORKING_BUBBLES.length)];
+    }
+  } else if (st.status === 'sleeping') {
+    if (r < 0.3) {
+      st.status = 'working';
+      st.bubble = WORKING_BUBBLES[Math.floor(Math.random() * WORKING_BUBBLES.length)];
+      addLog(`${m.name} が作業に復帰しました`);
+    }
+  } else if (st.status === 'coffee-break') {
+    if (r < 0.4) {
+      st.status = 'working';
+      st.bubble = WORKING_BUBBLES[Math.floor(Math.random() * WORKING_BUBBLES.length)];
+      addLog(`${m.name} が作業に復帰しました`);
+    }
+  } else if (st.status === 'walking') {
+    if (r < 0.5) {
+      st.status = 'working';
+      st.bubble = WORKING_BUBBLES[Math.floor(Math.random() * WORKING_BUBBLES.length)];
+      addLog(`${m.name} が席に戻りました`);
+    }
+  }
+
+  // Randomly complete a pending task
+  if (st.status === 'working' && Math.random() < 0.05) {
+    const pending = m.tasks.filter(t => !t.done);
+    if (pending.length > 0) {
+      const task = pending[Math.floor(Math.random() * pending.length)];
+      task.done = true;
+      task.detail = '完了';
+      addLog(`✅ ${m.name} が「${task.name}」を完了しました！`);
+      showToast(`✅ ${m.name}: ${task.name} 完了！`);
+    }
+  }
+
+  renderAll();
+}
+
+// ===== INIT =====
+function renderAll() {
+  renderOffice();
+  renderMembers();
+  renderReports();
+  renderLog();
+  renderWhiteboard();
+  renderStats();
+}
+
+initStates();
+renderAll();
+updateClock();
+
+// Initial logs
+addLog('🏢 オフィスモニター起動');
+MEMBERS.forEach(m => {
+  const st = memberStates[m.id];
+  addLog(`${m.name}: ${STATUS_LABELS[st.status].text}`);
+});
+
+setInterval(updateClock, 1000);
+setInterval(simulateActivity, 8000);
+
+// Keyboard shortcut
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+});
+</script>
+</body>
+</html>
