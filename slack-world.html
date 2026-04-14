@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slack World - SNS運用チーム</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'M PLUS Rounded 1c',sans-serif;background:#f0e6d3;overflow:hidden;height:100vh;user-select:none}
+
+/* ===== Top Bar ===== */
+.topbar{height:48px;background:linear-gradient(135deg,#ffecd2,#fcb69f);display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:3px solid #e8a87c;z-index:100;position:relative}
+.topbar h1{font-size:15px;color:#6b4226;letter-spacing:1px}
+.topbar .room-name{font-size:13px;color:#fff;background:#e8a87c;padding:4px 14px;border-radius:20px}
+.topbar .clock{font-size:12px;color:#8b6b4f}
+
+/* ===== Game Container ===== */
+.game{display:flex;height:calc(100vh - 48px)}
+
+/* ===== Room View ===== */
+.room-view{flex:1;position:relative;overflow:hidden}
+.room{position:absolute;inset:0;transition:opacity 0.5s,transform 0.5s;display:flex;flex-direction:column}
+.room.hidden{opacity:0;pointer-events:none;transform:scale(0.95)}
+
+/* Room interior */
+.room-bg{flex:1;position:relative;overflow:hidden}
+
+/* Wall */
+.wall{position:absolute;top:0;left:0;right:0;height:120px;border-bottom:4px solid rgba(0,0,0,0.1)}
+.floor{position:absolute;bottom:0;left:0;right:0;height:100px}
+
+/* Room specific themes */
+.room-main .wall{background:linear-gradient(180deg,#ffe8d6,#f4d4b5)}
+.room-main .floor{background:linear-gradient(0deg,#d4a97a,#e0bc94)}
+.room-main .room-bg{background:#fdf0e2}
+
+.room-report .wall{background:linear-gradient(180deg,#d6eaff,#b5d4f4)}
+.room-report .floor{background:linear-gradient(0deg,#7aa4d4,#94bce0)}
+.room-report .room-bg{background:#e2f0fd}
+
+.room-social .wall{background:linear-gradient(180deg,#ffe6f0,#f4b5cc)}
+.room-social .floor{background:linear-gradient(0deg,#d47a9e,#e094b4)}
+.room-social .room-bg{background:#fde2ee}
+
+.room-media .wall{background:linear-gradient(180deg,#e6ffe6,#b5f4b5)}
+.room-media .floor{background:linear-gradient(0deg,#7ad47a,#94e094)}
+.room-media .room-bg{background:#e8fde8}
+
+/* Windows on wall */
+.win{position:absolute;top:20px;width:80px;height:60px;background:linear-gradient(180deg,#a8daff,#7ec8e3);border:4px solid #fff;border-radius:12px;box-shadow:inset 0 0 10px rgba(255,255,255,0.5)}
+.win::before{content:'';position:absolute;top:50%;left:0;right:0;height:4px;background:#fff;transform:translateY(-50%)}
+.win::after{content:'';position:absolute;top:0;bottom:0;left:50%;width:4px;background:#fff;transform:translateX(-50%)}
+.curtain-l,.curtain-r{position:absolute;top:-8px;width:20px;height:76px;border-radius:0 0 50% 50%}
+.curtain-l{left:-12px;background:linear-gradient(90deg,#ffb3ba,#ff9aa2)}
+.curtain-r{right:-12px;background:linear-gradient(90deg,#ff9aa2,#ffb3ba)}
+
+/* ===== Doors ===== */
+.door{position:absolute;bottom:100px;width:60px;height:90px;border-radius:12px 12px 0 0;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;z-index:20}
+.door:hover{transform:scale(1.08);box-shadow:0 0 20px rgba(255,255,255,0.5)}
+.door-knob{position:absolute;right:10px;top:45px;width:10px;height:10px;background:#ffd700;border-radius:50%;border:2px solid #cc9900}
+.door-label{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:9px;white-space:nowrap;background:rgba(0,0,0,0.6);color:#fff;padding:2px 8px;border-radius:10px}
+.door-arrow{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:16px;animation:doorBounce 1s infinite}
+@keyframes doorBounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-6px)}}
+
+/* ===== Bookshelf ===== */
+.bookshelf{position:absolute;cursor:pointer;transition:transform 0.2s}
+.bookshelf:hover{transform:scale(1.04)}
+.shelf{background:linear-gradient(135deg,#c4813d,#a06929);border:3px solid #7a4f1e;border-radius:6px;box-shadow:0 4px 0 #5a3a10;padding:6px;display:flex;flex-direction:column;gap:4px}
+.shelf-row{display:flex;gap:3px;align-items:flex-end;height:30px;border-bottom:3px solid #7a4f1e;padding-bottom:2px;justify-content:center}
+.shelf-row:last-child{border-bottom:none}
+.book{border-radius:2px;cursor:pointer;transition:transform 0.15s;box-shadow:1px 0 0 rgba(0,0,0,0.15)}
+.book:hover{transform:translateY(-4px)}
+.shelf-title{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:#6b4226;white-space:nowrap;background:rgba(255,255,255,0.8);padding:1px 8px;border-radius:8px}
+
+/* ===== Characters ===== */
+.char{position:absolute;z-index:15;cursor:pointer;transition:left 2s ease-in-out,bottom 2s ease-in-out}
+.char:hover .char-body-wrap{transform:scale(1.1)}
+.char-body-wrap{transition:transform 0.2s}
+.char-head{width:28px;height:28px;border-radius:50%;position:relative;margin:0 auto;border:2px solid rgba(0,0,0,0.1)}
+.char-face{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px}
+.char-eye{width:4px;height:5px;background:#333;border-radius:50%}
+.char-mouth{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:8px;height:4px;border-bottom:2px solid #c47;border-radius:0 0 50% 50%}
+.char-torso{width:24px;height:18px;margin:0 auto;border-radius:4px 4px 0 0;border:2px solid rgba(0,0,0,0.08)}
+.char-legs{display:flex;gap:4px;justify-content:center}
+.char-leg{width:8px;height:10px;border-radius:0 0 4px 4px}
+.char-label{text-align:center;font-size:10px;margin-top:3px;color:#6b4226;font-weight:700;background:rgba(255,255,255,0.85);padding:1px 6px;border-radius:8px;white-space:nowrap}
+.char-bubble{position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:#fff;color:#555;font-size:9px;padding:3px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.1);opacity:0;transition:opacity 0.3s;pointer-events:none}
+.char-bubble::after{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #fff}
+.char:hover .char-bubble{opacity:1}
+
+/* Walking animation */
+.char.walking .char-body-wrap{animation:charWalk 0.6s infinite}
+@keyframes charWalk{0%,100%{transform:translateY(0)}25%{transform:translateY(-3px) rotate(-2deg)}75%{transform:translateY(-3px) rotate(2deg)}}
+
+/* Idle animation */
+.char.idle .char-body-wrap{animation:charIdle 3s infinite}
+@keyframes charIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+
+/* ===== Furniture ===== */
+.plant{position:absolute;font-size:28px;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.15))}
+.rug{position:absolute;border-radius:50%;opacity:0.3}
+.clock-wall{position:absolute;top:30px;width:40px;height:40px;background:#fff;border:3px solid #ddd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
+.poster{position:absolute;top:25px;width:50px;height:65px;border-radius:4px;border:3px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
+
+/* ===== Room Selector (left sidebar) ===== */
+.room-nav{width:64px;background:linear-gradient(180deg,#ffecd2,#f7d6b3);border-right:3px solid #e8a87c;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px;overflow-y:auto}
+.room-btn{width:48px;height:48px;border-radius:14px;border:3px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:18px;transition:all 0.2s;background:rgba(255,255,255,0.5);position:relative}
+.room-btn:hover{background:#fff;border-color:#e8a87c}
+.room-btn.active{background:#fff;border-color:#ff6b6b;box-shadow:0 2px 8px rgba(255,107,107,0.3)}
+.room-btn span{font-size:7px;color:#8b6b4f;margin-top:2px;line-height:1}
+.room-btn .unread{position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:#ff6b6b;border-radius:50%;font-size:8px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+/* ===== Right Panel: Book Reader ===== */
+.book-panel{width:360px;background:#fffaf0;border-left:3px solid #e8a87c;display:flex;flex-direction:column;transition:transform 0.3s;overflow:hidden}
+.book-panel.closed{transform:translateX(360px);width:0;min-width:0;border:none}
+
+.bp-header{padding:12px 16px;background:linear-gradient(135deg,#ffecd2,#fcb69f);border-bottom:2px solid #e8a87c;display:flex;justify-content:space-between;align-items:center;min-height:48px}
+.bp-title{font-size:13px;font-weight:700;color:#6b4226;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bp-close{width:28px;height:28px;border-radius:50%;background:#fff;border:2px solid #e8a87c;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:#c47;transition:all 0.2s}
+.bp-close:hover{background:#ff6b6b;color:#fff;border-color:#ff6b6b}
+
+.bp-content{flex:1;overflow-y:auto;padding:12px}
+.bp-content::-webkit-scrollbar{width:6px}
+.bp-content::-webkit-scrollbar-track{background:#fffaf0}
+.bp-content::-webkit-scrollbar-thumb{background:#e8a87c;border-radius:3px}
+
+/* Thread list */
+.thread-list-title{font-size:12px;color:#8b6b4f;margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed #e8a87c}
+
+.thread-card{background:#fff;border:2px solid #f0dcc8;border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:all 0.2s}
+.thread-card:hover{border-color:#ff9aa2;box-shadow:0 2px 8px rgba(255,154,162,0.2)}
+.tc-from{font-size:11px;font-weight:700;color:#c47}
+.tc-date{font-size:9px;color:#aaa;margin-left:6px}
+.tc-text{font-size:11px;color:#555;margin-top:4px;line-height:1.5;max-height:48px;overflow:hidden}
+.tc-replies{font-size:10px;color:#e8a87c;margin-top:4px;font-weight:700}
+
+/* Book (thread detail) */
+.book-page{background:#fff;border:2px solid #f0dcc8;border-radius:12px;padding:12px;margin-bottom:8px;position:relative}
+.book-page.parent{border-color:#ff9aa2;background:linear-gradient(135deg,#fff5f5,#fff)}
+.bp-from{font-size:11px;font-weight:700}
+.bp-time{font-size:9px;color:#aaa;margin-left:6px}
+.bp-text{font-size:11px;color:#444;margin-top:6px;line-height:1.7;white-space:pre-wrap;word-break:break-all}
+.bp-files{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
+.bp-file{font-size:9px;background:#f0f0f0;padding:2px 8px;border-radius:8px;color:#888}
+.bp-reactions{margin-top:4px;display:flex;gap:4px}
+.bp-reaction{font-size:9px;background:#fff3cd;padding:1px 6px;border-radius:8px;color:#856404}
+
+.bp-back{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#e8a87c;cursor:pointer;margin-bottom:10px;padding:4px 10px;border-radius:8px;background:rgba(232,168,124,0.1);transition:all 0.2s}
+.bp-back:hover{background:rgba(232,168,124,0.2)}
+
+.bp-page-num{position:absolute;top:8px;right:12px;font-size:9px;color:#ccc}
+
+/* Empty state */
+.empty-room{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#ccc;font-size:13px}
+.empty-room .emoji{font-size:40px;display:block;margin-bottom:8px}
+
+/* ===== Minimap ===== */
+.minimap{position:absolute;bottom:12px;right:12px;background:rgba(255,255,255,0.9);border:2px solid #e8a87c;border-radius:12px;padding:8px;display:flex;gap:6px;z-index:30}
+.mm-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);cursor:pointer;transition:transform 0.2s}
+.mm-dot:hover{transform:scale(1.3)}
+.mm-dot.here{animation:mmPulse 1.5s infinite}
+@keyframes mmPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,0.4)}50%{box-shadow:0 0 0 5px rgba(255,107,107,0)}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Slack World - SNS運用チーム</h1>
+  <div class="room-name" id="topRoomName">#all-根本拓sns運用チーム</div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div class="game">
+  <!-- Room Navigation -->
+  <div class="room-nav" id="roomNav"></div>
+
+  <!-- Room Display -->
+  <div class="room-view" id="roomView"></div>
+
+  <!-- Book Panel -->
+  <div class="book-panel closed" id="bookPanel">
+    <div class="bp-header">
+      <div class="bp-title" id="bpTitle">スレッド</div>
+      <div class="bp-close" id="bpClose">&times;</div>
+    </div>
+    <div class="bp-content" id="bpContent"></div>
+  </div>
+</div>
+
+<script>
+// ============================
+// DATA FROM SLACK
+// ============================
+const ROOMS = [
+  {
+    id:'main', name:'#all-根本拓sns運用チーム', icon:'💬', color:'#e8a87c', theme:'room-main',
+    threads:[
+      {id:'t1',from:'根本拓',fromColor:'#4a90d9',date:'4/13 11:10',
+       text:'4月LINE用動画 漢字確認\n\nスピーディーにありがとうございます！\n取り急ぎ、漢字は、稔さん、光子さんになります。\n動画はそのほか気づき点ありませんでした。',
+       replies:[
+         {from:'中谷陽保',color:'#e94560',time:'4/13 11:20',text:'早速のご確認ありがとうございます！\nそれでは、漢字を修正した動画をご用意しておきますので、お時間のある時にメッセージ文の確認をしていただけたら嬉しいです。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/13 16:49',text:'ありがとうございます。今日の夜のうちに案をお送りします。'},
+         {from:'中谷陽保',color:'#e94560',time:'4/13 17:08',text:'ありがとうございます。それでは、メッセージ文をお送りいただいたら、確認し、明日配信できるよう体制を整えておきます。\nまた、漢字を修正した動画を添付いたしますので、動画の方も最終確認をお願いいたします。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/13 21:44',text:'こちらもありがとうございます！\n投稿文は以下でどうでしょうか？\n\n文章案\n==========\n福島三春町の桜の木の下からのご挨拶です。\n美しい桜には素敵なエピソードがありました😌'},
+         {from:'中谷陽保',color:'#e94560',time:'4/14 00:09',text:'ありがとうございます。\n文章案良いと思います！\nそれでは、投稿作業は三上にバトンタッチして、明日(14日)の10:00-19:00の間に行います。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/14 07:37',text:'ありがとうございます！　よろしくお願いします。'},
+         {from:'三上雄大',color:'#f59e0b',time:'4/14 09:55',text:'4月LINE用動画、いただいたメッセージとともに、本日12:00に配信いたします！'},
+       ]},
+      {id:'t2',from:'中谷陽保',fromColor:'#e94560',date:'4/13 10:20',
+       text:'お花見の写真投稿案を作成しました。\n写真選定と投稿文を作成しましたので、ご確認お願いいたします。\n\n今週末、福島各地で桜が見頃を迎えました！\nどこへ行っても満開の桜が本当に美しく、地元の方々の笑顔で賑わっていました。',
+       replies:[
+         {from:'根本拓',color:'#4a90d9',time:'4/13 21:39',text:'すみません、こちらせっかく作っていただいていたのに見落としてました💦\n投稿文と写真は以下でお願いします！　各地の写真を投稿した方が良いかなと思いました。\nエックス用にはそれぞれの場所から1枚選んで4枚にして投稿をお願いします。'},
+         {from:'中谷陽保',color:'#e94560',time:'4/14 10:27',text:'ご確認ありがとうございます！\nFacebookとInstagramは、送っていただいた6枚の写真で投稿しようと思います。\nXは添付の4枚を選んでみたのですが、いかがでしょうか？'},
+       ]},
+      {id:'t3',from:'中谷陽保',fromColor:'#e94560',date:'4/13 09:29',
+       text:'4月LINE用動画について\n\nLINE用動画の編集を行いました。\n①字幕について、個人名の漢字の確認をお願いします。\n②動画と一緒に送る文章の案も作成しました。ご確認お願いいたします。',
+       replies:[]},
+      {id:'t4',from:'伊藤一矢',fromColor:'#8b5cf6',date:'4/11 22:57',
+       text:'お花見シーズンで各所の動画をお送りします。\nちょうど今が満開で、来週になると散り始めてくるため、最優先でショート動画を作っていただきますか？\n\n昼間の桜の動画で1つ、夜桜の動画で1つ、の2種のショート動画でどうでしょうか？',
+       replies:[
+         {from:'伊藤一矢',color:'#8b5cf6',time:'4/11 23:14',text:'昼間の動画まであったので送ります。（ごめんなさい次回からある程度まとめてzipで送ります）'},
+       ]},
+      {id:'t5',from:'三上雄大',fromColor:'#f59e0b',date:'4/09 11:24',
+       text:'原油価格への期待と不安\n\nお疲れ様です。本日付の福島民友より、米イラン停戦を受けて、原油価格に対する県内の期待と不安が取材されています。これにあわせて、県民生活を守る決意を述べるのはいかがでしょうか？',
+       replies:[
+         {from:'根本拓',color:'#4a90d9',time:'4/13 21:47',text:'こちらありがとうございます！　見落としていてすみません💦\nただ、ちょっとコメントが薄いかなぁと思いました。政治家は自分の気持ちの表出以上のこと、何らかの政策の表明や、皆さんに役立つ情報提供をしなければいけないと思います。\nこの観点からは、土曜日のネモトークで話したような相談窓口の紹介とか、そういう投稿をした方が良いかと思います。'},
+       ]},
+      {id:'t6',from:'根本拓',fromColor:'#4a90d9',date:'4/08 12:00',
+       text:'入学式動画\n\nFSGの入学式であいさつした動画と、さらに最後の締め用の短い動画を撮影しました。こちらを適宜切り貼りしたり組み合わせたりして、投稿用の動画を作っていただけませんでしょうか？',
+       replies:[
+         {from:'三上雄大',color:'#f59e0b',time:'4/08 12:20',text:'お手数のところ、動画の撮影とご共有ありがとうございます。こちらいただいたものをもとに、編集いたします。'},
+         {from:'新山琴子',color:'#10b981',time:'4/08 20:15',text:'お疲れ様です。投稿案を作成いたしましたので、ご確認よろしくお願いいたします。\n\n現在、動画が3分22秒ありますが、リール動画は3分の動画までしかアップロードできないため22秒をどこかでカットする必要があります。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/08 21:50',text:'ありがとうございます！カット候補はカットして大丈夫です。そのうえで、もう少し短くしたいなぁと思うのですが、ほかにもどこかありそうでしょうか？'},
+         {from:'新山琴子',color:'#10b981',time:'4/08 22:59',text:'内容が少し重複しているところをカットして、2分30秒までカットいたしました。こちらでいかがでしょうか。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/09 07:32',text:'ありがとうございます！　さらに削りたいので、\nしばらく前は〜しかし、(今は、の前まで)をカット\nまた導入部のメッセージは、地元の専門学校で新入生の皆さんに〜にしてください。'},
+         {from:'新山琴子',color:'#10b981',time:'4/09 13:06',text:'お疲れ様です。修正箇所を反映させた動画を添付いたしましたので、ご確認よろしくお願いいたします。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/09 21:22',text:'ありがとうございます！　動画はこちらですごく良いと思います！\nメッセージは以下でお願いします。\n\n【この春にご入学された皆さんへ】\n新入生の皆さん、ご入学おめでとうございます！！🌸'},
+         {from:'新山琴子',color:'#10b981',time:'4/09 22:01',text:'それでは、こちらの動画と文章で、明日の18時に、X・FB・Instagram・YouTubeの4媒体に投稿いたします。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/09 22:14',text:'ありがとうございます。投稿お願いします！'},
+         {from:'新山琴子',color:'#10b981',time:'4/09 22:20',text:'ありがとうございます！それではこちらで投稿いたします🙇‍♀️'},
+       ]},
+      {id:'t7',from:'新山琴子',fromColor:'#10b981',date:'4/08 11:19',
+       text:'4月11日（土）ねもトーク告知用文章\n\nお疲れ様です。4月11日に行われる「ねもトーク」の告知用文章を作成いたしましたので、ご確認よろしくお願いいたします。\nあわせて、Slackにて計3件の提案をお送りしておりますので、お手隙の際にご確認いただけますと幸いです。',
+       replies:[
+         {from:'根本拓',color:'#4a90d9',time:'4/08 11:46',text:'ありがとうございます！　文章は以下でお願いします。\n\n新年度最初の「ねもトーク」を開催します！\n最近の活動についてお話ししつつ、皆さまと交流できると嬉しいです。'},
+         {from:'新山琴子',color:'#10b981',time:'4/08 11:47',text:'文章をご確認いただきありがとうございます。\nそれでは、こちらの文章で投稿を進めさせていただきます。'},
+       ]},
+      {id:'t8',from:'三上雄大',fromColor:'#f59e0b',date:'4/08 10:29',
+       text:'天皇皇后両陛下、愛子さまが訪問されたニュース記事を引用し、感謝の気持ちをお伝えする投稿はいかがでしょうか？',
+       replies:[
+         {from:'根本拓',color:'#4a90d9',time:'4/08 11:58',text:'ありがとうございます！ぜひ投稿しましょう。コメントは以下でどうでしょうか？\n見ていただいたところはもっとあるので、「被災地」と丸めています。'},
+         {from:'三上雄大',color:'#f59e0b',time:'4/08 12:13',text:'表現を丸めてくださり、より事実関係が明確になったと考えます。福島民報さんの引用リポストの形で投稿するのはいかがでしょうか？'},
+         {from:'根本拓',color:'#4a90d9',time:'4/08 12:30',text:'ありがとうございます。良いかと思います！'},
+         {from:'三上雄大',color:'#f59e0b',time:'4/08 12:34',text:'ありがとうございます！こちら投稿作業いたします。'},
+       ]},
+      {id:'t9',from:'三上雄大',fromColor:'#f59e0b',date:'4/08 10:16',
+       text:'郡山市街地のクマ目撃に関して、保護者の送迎による登下校や、市が緊急銃猟も視野であるとの報道が出ています。注意喚起投稿はいかがでしょうか？',
+       replies:[
+         {from:'根本拓',color:'#4a90d9',time:'4/08 11:47',text:'大事な投稿ですね。たしかクマが現れたところを追跡できるアプリがあったと思うのですが、その紹介をできないでしょうか？'},
+         {from:'三上雄大',color:'#f59e0b',time:'4/08 12:00',text:'該当のアプリは「クママップ」かと思われます。今回の郡山エリアの目撃情報も反映されております。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/08 12:14',text:'再度検討し、公式発表を紹介した方が良いかなと思いました。'},
+         {from:'三上雄大',color:'#f59e0b',time:'4/08 12:25',text:'注意喚起の文を一文追加したほうがよいかと思われますが、こちらいかがでしょう？'},
+         {from:'根本拓',color:'#4a90d9',time:'4/08 12:29',text:'不安をあおりすぎない方が良いかなとも思いますので、以下くらいでどうでしょうか。'},
+         {from:'三上雄大',color:'#f59e0b',time:'4/08 12:32',text:'おっしゃる通り、過度なあおりは和らげた方がよいろ考えます。いただいた投稿文にて投稿作業を進めます。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/08 12:34',text:'お願いします！'},
+         {from:'三上雄大',color:'#f59e0b',time:'4/08 12:38',text:'タイムライン上で埋もれないよう、即時性のあるクマの投稿を先に行い、その60分後に天皇皇后両陛下愛子さま訪問を投稿いたします。'},
+       ]},
+      {id:'t10',from:'中谷陽保',fromColor:'#e94560',date:'4/07 07:30',
+       text:'小泉大臣がメンションしてくださっているので、リポストをするのはいかがでしょうか？\nまた、必要であればアルバムの写真から新規投稿も作成するのでお声がけください。',
+       replies:[
+         {from:'根本拓',color:'#4a90d9',time:'4/07 07:59',text:'見つけていただきありがとうございます！\n\n小泉大臣、全国の自民党青年局の皆さんから事前予告なく来る鋭い質問に、1時間にもわたって丁寧に答え続けていただきありがとうございました！\n\nと返していただけるでしょうか？'},
+       ]},
+      {id:'t11',from:'根本拓',fromColor:'#4a90d9',date:'4/03 10:16',
+       text:'コーヒー自販機\n\nこんな投稿どうでしょうか。投稿案の作成をお願いいたします。\n東京駅のホームの自動コーヒー販売機について。外国人観光客の方が驚いていたエピソードです。',
+       replies:[
+         {from:'中谷陽保',color:'#e94560',time:'4/03 13:23',text:'投稿文と写真でいかがでしょうか？\n\n「こんな自動販売機があるなんてすごい！」\n東京駅のホームで、外国人観光客の方が驚いたのは、自動コーヒー販売機です。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/03 13:41',text:'ありがとうございます！素晴らしいと思います！！\n投稿をお願いします。18時とかの方が伸びやすければ、その時間の投稿でも大丈夫です👌'},
+         {from:'中谷陽保',color:'#e94560',time:'4/03 15:37',text:'おっしゃる通り夕方以降の方が見てもらいやすいと思いますので、各媒体で本日18時に予約投稿いたします。'},
+         {from:'根本拓',color:'#4a90d9',time:'4/03 15:48',text:'ありがとうございます！'},
+       ]},
+    ]
+  },
+  {
+    id:'report', name:'#投稿の完了報告', icon:'✅', color:'#7ec8e3', theme:'room-report',
+    threads:[
+      {id:'r1',from:'新山琴子',fromColor:'#10b981',date:'4/10 19:17',text:'FSGカレッジリーグ入学式お祝いメッセージの件、投稿が完了いたしました。\n\n【X】【Instagram】【Facebook】【YouTube】',replies:[]},
+      {id:'r2',from:'新山琴子',fromColor:'#10b981',date:'4/09 22:20',text:'4月11日ねもトークの告知、投稿が完了いたしました。\n\n【X】【Instagram】【Facebook】',replies:[]},
+      {id:'r3',from:'三上雄大',fromColor:'#f59e0b',date:'4/08 13:54',text:'天皇皇后両陛下、愛子さま訪問の件、投稿が完了しました。\n\n【X】',replies:[]},
+      {id:'r4',from:'三上雄大',fromColor:'#f59e0b',date:'4/08 12:47',text:'郡山市街地でのクマ出没の件、投稿が完了しました。\n\n【X】',replies:[]},
+      {id:'r5',from:'中谷陽保',fromColor:'#e94560',date:'4/07 11:03',text:'小泉大臣の投稿への引用リポストが完了しました。',replies:[]},
+      {id:'r6',from:'中谷陽保',fromColor:'#e94560',date:'4/06 11:58',text:'「ねぎし」の牛タン定食の拓メシ、ストーリー投稿が完了しました。',replies:[]},
+      {id:'r7',from:'三上雄大',fromColor:'#f59e0b',date:'4/04 23:24',text:'【動画】しゅふコミイベントの件、ストーリー投稿が完了いたしました。',replies:[]},
+      {id:'r8',from:'中谷陽保',fromColor:'#e94560',date:'4/03 18:54',text:'コーヒーの自動販売機についての投稿が完了しました。\n\n【X】【Instagram】【Facebook】',replies:[]},
+      {id:'r9',from:'中谷陽保',fromColor:'#e94560',date:'4/02 10:45',text:'ガソリン価格についての投稿が完了しました。\n\n【Instagram】【Facebook】【X】',replies:[]},
+    ]
+  },
+  {
+    id:'social', name:'#ソーシャル', icon:'🎈', color:'#ffb3ba', theme:'room-social',
+    threads:[]
+  },
+  {
+    id:'media', name:'#写真動画素材ご提供', icon:'📸', color:'#77dd77', theme:'room-media',
+    threads:[]
+  },
+];
+
+const CHARACTERS = [
+  {id:'nemoto',name:'根本拓',head:'#4a90d9',torso:'#2563eb',leg:'#1e40af',bubbles:['確認中...','良いと思います！','お願いします']},
+  {id:'nakatani',name:'中谷陽保',head:'#e94560',torso:'#be123c',leg:'#9f1239',bubbles:['投稿案を作成中','写真選定中','予約投稿します']},
+  {id:'mikami',name:'三上雄大',head:'#f59e0b',torso:'#d97706',leg:'#b45309',bubbles:['ニュース確認中','投稿文を作成中','ソース記事を確認']},
+  {id:'niiyama',name:'新山琴子',head:'#10b981',torso:'#059669',leg:'#047857',bubbles:['動画を編集中','テンプレ選定中','4媒体に投稿します']},
+  {id:'ito',name:'伊藤一矢',head:'#8b5cf6',torso:'#7c3aed',leg:'#6d28d9',bubbles:['素材を確認中','動画を送ります','ねもトーク準備中']},
+  {id:'asai',name:'浅井',head:'#ec4899',torso:'#db2777',leg:'#be185d',bubbles:['SNS確認中','投稿完了！','リアクション中']},
+];
+
+// ============================
+// STATE
+// ============================
+let currentRoom = 'main';
+let currentView = 'threadList'; // threadList | threadDetail
+let currentThread = null;
+let charPositions = {};
+let charRooms = {};
+let bookPanelOpen = false;
+
+// ============================
+// RENDER ROOMS
+// ============================
+function renderRoomNav() {
+  const nav = document.getElementById('roomNav');
+  nav.innerHTML = '';
+  ROOMS.forEach(r => {
+    const btn = document.createElement('div');
+    btn.className = 'room-btn' + (r.id === currentRoom ? ' active' : '');
+    btn.onclick = () => switchRoom(r.id);
+    let unread = r.threads.length;
+    btn.innerHTML = `${r.icon}<span>${r.name.replace('#','').substring(0,6)}</span>${unread > 0 ? `<div class="unread">${unread}</div>` : ''}`;
+    nav.appendChild(btn);
+  });
+}
+
+function renderRoom() {
+  const view = document.getElementById('roomView');
+  view.innerHTML = '';
+  const room = ROOMS.find(r => r.id === currentRoom);
+  document.getElementById('topRoomName').textContent = room.name;
+
+  const roomEl = document.createElement('div');
+  roomEl.className = `room ${room.theme}`;
+
+  const bg = document.createElement('div');
+  bg.className = 'room-bg';
+
+  // Wall
+  const wall = document.createElement('div');
+  wall.className = 'wall';
+  bg.appendChild(wall);
+
+  // Windows
+  [120, 340, 560].forEach(x => {
+    const w = document.createElement('div');
+    w.className = 'win';
+    w.style.left = x + 'px';
+    const cl = document.createElement('div'); cl.className='curtain-l';
+    const cr = document.createElement('div'); cr.className='curtain-r';
+    w.appendChild(cl); w.appendChild(cr);
+    wall.appendChild(w);
+  });
+
+  // Floor
+  const floor = document.createElement('div');
+  floor.className = 'floor';
+  bg.appendChild(floor);
+
+  // Rug
+  const rug = document.createElement('div');
+  rug.className = 'rug';
+  rug.style.cssText = `bottom:60px;left:50%;transform:translateX(-50%);width:300px;height:80px;background:${room.color}`;
+  bg.appendChild(rug);
+
+  // Posters
+  const posterColors = ['#ffb3ba','#bae1ff','#baffc9','#ffffba'];
+  [80, 230, 460, 620].forEach((x,i) => {
+    const p = document.createElement('div');
+    p.className = 'poster';
+    p.style.cssText = `left:${x}px;background:linear-gradient(135deg,${posterColors[i%4]},#fff)`;
+    wall.appendChild(p);
+  });
+
+  // Clock on wall
+  const ck = document.createElement('div');
+  ck.className = 'clock-wall';
+  ck.style.right = '80px';
+  ck.textContent = '🕐';
+  wall.appendChild(ck);
+
+  // Plants
+  ['20px','calc(100% - 50px)'].forEach(x => {
+    const p = document.createElement('div');
+    p.className = 'plant';
+    p.style.cssText = `bottom:100px;left:${x}`;
+    p.textContent = '🪴';
+    bg.appendChild(p);
+  });
+
+  // Bookshelf with threads
+  if (room.threads.length > 0) {
+    renderBookshelf(bg, room);
+  } else {
+    const empty = document.createElement('div');
+    empty.className = 'empty-room';
+    empty.innerHTML = '<span class="emoji">🏖️</span>まだスレッドはありません';
+    bg.appendChild(empty);
+  }
+
+  // Doors to other rooms
+  const otherRooms = ROOMS.filter(r => r.id !== currentRoom);
+  const doorPositions = [30, view.offsetWidth ? view.offsetWidth - 100 : 700];
+  otherRooms.slice(0,2).forEach((r,i) => {
+    const door = document.createElement('div');
+    door.className = 'door';
+    door.style.cssText = `${i===0?'left':'right'}:30px;background:linear-gradient(135deg,${r.color},${r.color}dd)`;
+    door.onclick = () => switchRoom(r.id);
+    door.innerHTML = `<div class="door-knob"></div><div class="door-label">${r.name.replace('#','')}</div><div class="door-arrow">⬇</div>`;
+    bg.appendChild(door);
+  });
+
+  // Characters
+  renderCharacters(bg);
+
+  // Minimap
+  const mm = document.createElement('div');
+  mm.className = 'minimap';
+  ROOMS.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'mm-dot' + (r.id === currentRoom ? ' here' : '');
+    d.style.background = r.color;
+    d.title = r.name;
+    d.onclick = () => switchRoom(r.id);
+    mm.appendChild(d);
+  });
+  bg.appendChild(mm);
+
+  roomEl.appendChild(bg);
+  view.appendChild(roomEl);
+}
+
+function renderBookshelf(container, room) {
+  const threads = room.threads;
+  const shelves = [];
+  const perShelf = 4;
+  for (let i = 0; i < threads.length; i += perShelf) {
+    shelves.push(threads.slice(i, i + perShelf));
+  }
+
+  const shelfEl = document.createElement('div');
+  shelfEl.className = 'bookshelf';
+  shelfEl.style.cssText = 'bottom:120px;left:50%;transform:translateX(-50%)';
+
+  const shelf = document.createElement('div');
+  shelf.className = 'shelf';
+  shelf.style.width = (shelves[0].length * 38 + 20) + 'px';
+
+  const bookColors = ['#ff6b6b','#feca57','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#01a3a4','#ee5a24'];
+
+  shelves.forEach((row, si) => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'shelf-row';
+    row.forEach((t, ti) => {
+      const b = document.createElement('div');
+      b.className = 'book';
+      const h = 16 + (t.replies.length * 2);
+      const c = bookColors[(si * perShelf + ti) % bookColors.length];
+      b.style.cssText = `width:${t.replies.length > 3 ? 16 : 12}px;height:${Math.min(h,28)}px;background:${c}`;
+      b.title = t.text.substring(0, 30) + '...';
+      b.onclick = (e) => { e.stopPropagation(); openThread(room.id, t.id); };
+      rowEl.appendChild(b);
+    });
+    shelf.appendChild(rowEl);
+  });
+
+  const title = document.createElement('div');
+  title.className = 'shelf-title';
+  title.textContent = `📚 スレッド ${threads.length}件（クリックで閲覧）`;
+  shelfEl.appendChild(shelf);
+  shelfEl.appendChild(title);
+  shelfEl.onclick = () => openThreadList(room.id);
+  container.appendChild(shelfEl);
+}
+
+// ============================
+// CHARACTERS
+// ============================
+function initCharPositions() {
+  CHARACTERS.forEach(c => {
+    const roomIdx = Math.floor(Math.random() * Math.min(2, ROOMS.length));
+    charRooms[c.id] = ROOMS[roomIdx].id;
+    charPositions[c.id] = { x: 100 + Math.random() * 500, y: 140 + Math.random() * 100 };
+  });
+  // Ensure nemoto is in main
+  charRooms['nemoto'] = 'main';
+  charRooms['nakatani'] = 'main';
+  charRooms['mikami'] = 'main';
+  charRooms['niiyama'] = 'main';
+}
+
+function renderCharacters(container) {
+  CHARACTERS.forEach(c => {
+    if (charRooms[c.id] !== currentRoom) return;
+    const pos = charPositions[c.id];
+    const el = document.createElement('div');
+    el.className = 'char idle';
+    el.style.cssText = `left:${pos.x}px;bottom:${pos.y}px`;
+
+    const bubble = c.bubbles[Math.floor(Math.random() * c.bubbles.length)];
+    el.innerHTML = `
+      <div class="char-bubble">${bubble}</div>
+      <div class="char-body-wrap">
+        <div class="char-head" style="background:${c.head}">
+          <div class="char-face"><div class="char-eye"></div><div class="char-eye"></div></div>
+          <div class="char-mouth"></div>
+        </div>
+        <div class="char-torso" style="background:${c.torso}"></div>
+        <div class="char-legs">
+          <div class="char-leg" style="background:${c.leg}"></div>
+          <div class="char-leg" style="background:${c.leg}"></div>
+        </div>
+      </div>
+      <div class="char-label">${c.name}</div>
+    `;
+    container.appendChild(el);
+  });
+}
+
+function moveCharacters() {
+  CHARACTERS.forEach(c => {
+    const pos = charPositions[c.id];
+    // Random walk
+    pos.x += (Math.random() - 0.5) * 60;
+    pos.y += (Math.random() - 0.5) * 20;
+    pos.x = Math.max(60, Math.min(680, pos.x));
+    pos.y = Math.max(120, Math.min(220, pos.y));
+
+    // Occasionally switch rooms
+    if (Math.random() < 0.05 && c.id !== 'nemoto') {
+      const rooms = ROOMS.map(r => r.id);
+      charRooms[c.id] = rooms[Math.floor(Math.random() * rooms.length)];
+    }
+  });
+
+  // Re-render characters in current room
+  const bg = document.querySelector('.room-bg');
+  if (!bg) return;
+  bg.querySelectorAll('.char').forEach(el => el.remove());
+  renderCharacters(bg);
+
+  // Animate walking
+  document.querySelectorAll('.char').forEach(el => {
+    el.classList.remove('idle');
+    el.classList.add('walking');
+    setTimeout(() => {
+      el.classList.remove('walking');
+      el.classList.add('idle');
+    }, 2000);
+  });
+}
+
+// ============================
+// BOOK PANEL
+// ============================
+function openThreadList(roomId) {
+  const room = ROOMS.find(r => r.id === roomId);
+  if (!room || room.threads.length === 0) return;
+  currentView = 'threadList';
+  bookPanelOpen = true;
+  const panel = document.getElementById('bookPanel');
+  panel.classList.remove('closed');
+  document.getElementById('bpTitle').textContent = `📚 ${room.name}`;
+
+  const content = document.getElementById('bpContent');
+  content.innerHTML = `<div class="thread-list-title">スレッド一覧 (${room.threads.length}件) — 本棚の中身</div>`;
+
+  room.threads.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'thread-card';
+    card.onclick = () => openThread(roomId, t.id);
+    card.innerHTML = `
+      <div><span class="tc-from" style="color:${t.fromColor}">${t.from}</span><span class="tc-date">${t.date}</span></div>
+      <div class="tc-text">${escHtml(t.text)}</div>
+      ${t.replies.length > 0 ? `<div class="tc-replies">📖 ${t.replies.length}ページ（返信）</div>` : '<div class="tc-replies" style="color:#ccc">返信なし</div>'}
+    `;
+    content.appendChild(card);
+  });
+}
+
+function openThread(roomId, threadId) {
+  const room = ROOMS.find(r => r.id === roomId);
+  const thread = room.threads.find(t => t.id === threadId);
+  if (!thread) return;
+  currentView = 'threadDetail';
+  currentThread = { roomId, threadId };
+  bookPanelOpen = true;
+  const panel = document.getElementById('bookPanel');
+  panel.classList.remove('closed');
+  document.getElementById('bpTitle').textContent = `📖 ${thread.from}のスレッド`;
+
+  const content = document.getElementById('bpContent');
+  content.innerHTML = '';
+
+  // Back button
+  const back = document.createElement('div');
+  back.className = 'bp-back';
+  back.innerHTML = '← 本棚に戻る';
+  back.onclick = () => openThreadList(roomId);
+  content.appendChild(back);
+
+  // Parent message (book cover)
+  const parent = document.createElement('div');
+  parent.className = 'book-page parent';
+  parent.innerHTML = `
+    <div class="bp-page-num">表紙</div>
+    <div><span class="bp-from" style="color:${thread.fromColor}">${thread.from}</span><span class="bp-time">${thread.date}</span></div>
+    <div class="bp-text">${escHtml(thread.text)}</div>
+  `;
+  content.appendChild(parent);
+
+  // Replies (pages)
+  thread.replies.forEach((r, i) => {
+    const page = document.createElement('div');
+    page.className = 'book-page';
+    page.innerHTML = `
+      <div class="bp-page-num">p.${i + 1}</div>
+      <div><span class="bp-from" style="color:${r.color}">${r.from}</span><span class="bp-time">${r.time}</span></div>
+      <div class="bp-text">${escHtml(r.text)}</div>
+    `;
+    content.appendChild(page);
+  });
+
+  if (thread.replies.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;color:#ccc;padding:20px;font-size:12px';
+    empty.textContent = 'まだ返信（ページ）はありません';
+    content.appendChild(empty);
+  }
+}
+
+function closeBookPanel() {
+  bookPanelOpen = false;
+  document.getElementById('bookPanel').classList.add('closed');
+}
+
+// ============================
+// NAVIGATION
+// ============================
+function switchRoom(roomId) {
+  currentRoom = roomId;
+  renderRoomNav();
+  renderRoom();
+  if (bookPanelOpen) openThreadList(roomId);
+}
+
+// ============================
+// CLOCK
+// ============================
+function updateClock() {
+  const now = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('clock').textContent =
+    `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} (${days[now.getDay()]}) ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+// ============================
+// UTILS
+// ============================
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ============================
+// INIT
+// ============================
+initCharPositions();
+renderRoomNav();
+renderRoom();
+updateClock();
+setInterval(updateClock, 30000);
+setInterval(moveCharacters, 5000);
+
+document.getElementById('bpClose').onclick = closeBookPanel;
+</script>
+</body>
+</html>
